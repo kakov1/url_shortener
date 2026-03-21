@@ -1,11 +1,11 @@
 #include "server.hpp"
+#include "types.hpp"
 #include <boost/beast.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
 #include <iostream>
 
-using tcp = boost::asio::ip::tcp;
-
+namespace shortener {
 HttpSession::HttpSession(tcp::socket socket, UrlShortener &shortener)
     : socket_(std::move(socket)), shortener_(shortener) {}
 
@@ -61,8 +61,7 @@ void HttpSession::handle() {
   socket_.shutdown(tcp::socket::shutdown_send, ec);
 }
 
-HttpServer::HttpServer(boost::asio::io_context &io_context, unsigned short port,
-                       unsigned short num_threads)
+HttpServer::HttpServer(io_context &io_context, ushort port, ushort num_threads)
     : io_context_(io_context),
       acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), shortener_(),
       thread_pool_(num_threads, socket_queue_, io_context_, shortener_) {
@@ -76,3 +75,4 @@ void HttpServer::accept() {
     socket_queue_.push(std::move(socket));
   }
 }
+} // namespace shortener

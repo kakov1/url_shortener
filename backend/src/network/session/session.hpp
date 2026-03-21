@@ -1,15 +1,9 @@
 #pragma once
 
-#include "../shortener/shortener.hpp"
-#include <boost/asio.hpp>
-#include <boost/beast.hpp>
-#include <boost/beast/http.hpp>
-#include <boost/beast/version.hpp>
-#include <iostream>
+#include "types.hpp"
+#include "shortener.hpp"
 
-namespace beast = boost::beast;
-namespace http = beast::http;
-
+namespace shortener {
 class HttpSession {
 private:
   tcp::socket socket_;
@@ -22,3 +16,4 @@ public:
 
   void handle();
 };
+} // namespace shortener

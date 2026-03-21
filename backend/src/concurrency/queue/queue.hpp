@@ -1,11 +1,11 @@
 #pragma once
 
+#include "types.hpp"
 #include <boost/asio.hpp>
 #include <condition_variable>
 #include <queue>
 
-using tcp = boost::asio::ip::tcp;
-
+namespace shortener {
 template <typename T> class ThreadSafeQueue {
 private:
   std::queue<T> queue_;
@@ -25,7 +25,7 @@ public:
   T pop() {
     std::unique_lock<std::mutex> lock(mutex_);
 
-    cv_.wait(lock, [this]() { return !queue_.empty(); });
+    cv_.wait(lock, [&queue = queue_]() { return !queue.empty(); });
 
     T value = std::move(queue_.front());
     queue_.pop();
@@ -33,3 +33,4 @@ public:
     return value;
   }
 };
+} // namespace shortener

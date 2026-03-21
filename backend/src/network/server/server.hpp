@@ -1,8 +1,9 @@
 #pragma once
 
-#include "../core/safequeue.hpp"
-#include "../core/threadpool.hpp"
-#include "../shortener/shortener.hpp"
+#include "queue.hpp"
+#include "threadpool.hpp"
+#include "types.hpp"
+#include "shortener.hpp"
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -10,9 +11,7 @@
 #include <memory>
 #include <vector>
 
-namespace beast = boost::beast;
-namespace http = beast::http;
-
+namespace shortener {
 class HttpSession {
 private:
   tcp::socket socket_;
@@ -28,7 +27,7 @@ public:
 
 class HttpServer {
 private:
-  boost::asio::io_context &io_context_;
+  io_context &io_context_;
   tcp::acceptor acceptor_;
   ThreadSafeQueue<tcp::socket> socket_queue_;
   ThreadPool thread_pool_;
@@ -37,8 +36,8 @@ private:
   void accept();
 
 public:
-  HttpServer(boost::asio::io_context &io_context, unsigned short port,
-             unsigned short num_threads);
+  HttpServer(io_context &io_context, ushort port, ushort num_threads);
 
   void run();
 };
+} // namespace shortener

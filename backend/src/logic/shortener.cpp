@@ -1,5 +1,6 @@
 #include "shortener.hpp"
 
+namespace shortener {
 std::string UrlShortener::shorten(const std::string &url) {
   std::lock_guard<std::mutex> lock(mutex_);
   std::string key = std::to_string(std::hash<std::string>{}(url)).substr(0, 6);
@@ -15,3 +16,4 @@ std::string UrlShortener::resolve(const std::string &key) {
 
   return "";
 }
+} // namespace shortener

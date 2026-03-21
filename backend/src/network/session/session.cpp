@@ -1,6 +1,6 @@
 #include "session.hpp"
 
-using tcp = boost::asio::ip::tcp;
+namespace shortener {
 
 HttpSession::HttpSession(tcp::socket socket, UrlShortener &shortener)
     : socket_(std::move(socket)), shortener_(shortener) {}
@@ -56,3 +56,4 @@ void HttpSession::handle() {
   boost::system::error_code ec;
   socket_.shutdown(tcp::socket::shutdown_send, ec);
 }
+} // namespace shortener

@@ -1,9 +1,9 @@
 #include "threadpool.hpp"
-#include "../network/session.hpp"
+#include "session.hpp"
 
-ThreadPool::ThreadPool(size_t num_threads, ThreadSafeQueue<tcp::socket> &queue,
-                       boost::asio::io_context &io_context,
-                       UrlShortener &shortener)
+namespace shortener {
+ThreadPool::ThreadPool(ushort num_threads, ThreadSafeQueue<tcp::socket> &queue,
+                       io_context &io_context, UrlShortener &shortener)
     : queue_(queue), io_context_(io_context), shortener_(shortener) {
 
   for (size_t i = 0; i < num_threads; ++i) {
@@ -18,8 +18,9 @@ ThreadPool::ThreadPool(size_t num_threads, ThreadSafeQueue<tcp::socket> &queue,
 }
 
 ThreadPool::~ThreadPool() {
-  for (auto &t : workers_) {
+  for (auto &&t : workers_) {
     if (t.joinable())
       t.join();
   }
 }
+} // namespace shortener
