@@ -1,78 +1,66 @@
 #include "server.hpp"
-#include "types.hpp"
-#include <boost/beast.hpp>
-#include <boost/beast/http.hpp>
-#include <boost/beast/version.hpp>
 #include <iostream>
 
 namespace shortener {
-HttpSession::HttpSession(tcp::socket socket, UrlShortener &shortener)
-    : socket_(std::move(socket)), shortener_(shortener) {}
-
-void HttpSession::handle() {
-  boost::beast::flat_buffer buffer;
-
-  http::request<http::string_body> req;
-  http::read(socket_, buffer, req);
-
-  http::response<http::string_body> res;
-
-  if (req.method() == http::verb::post && req.target() == "/shorten") {
-    std::string url = req.body();
-    std::string key = shortener_.shorten(url);
-
-    res.result(http::status::ok);
-    res.body() = key;
-
-  } else if (req.method() == http::verb::get) {
-    std::string target = std::string(req.target());
-
-    if (target.size() > 1) {
-      std::string key = target.substr(1);
-      std::string url = shortener_.resolve(key);
-
-      if (!url.empty()) {
-        res.result(http::status::found);
-        res.set(http::field::location, url);
-      } else {
-        res.result(http::status::not_found);
-        res.body() = "Not found";
-      }
-    } else {
-      res.result(http::status::bad_request);
-      res.body() = "Empty key";
-    }
-
-  } else {
-    res.result(http::status::bad_request);
-    res.body() = "Invalid request";
-  }
-
-  res.version(req.version());
-  res.set(http::field::server, "CustomServer");
-  res.set(http::field::content_type, "text/plain");
-  res.keep_alive(false);
-
-  res.prepare_payload();
-
-  http::write(socket_, res);
-
-  boost::system::error_code ec;
-  socket_.shutdown(tcp::socket::shutdown_send, ec);
-}
 
 HttpServer::HttpServer(io_context &io_context, ushort port, ushort num_threads)
     : io_context_(io_context),
       acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), shortener_(),
-      thread_pool_(num_threads, socket_queue_, io_context_, shortener_) {
-  accept();
+      thread_pool_(num_threads, socket_queue_, shortener_),
+      is_running_{false} {}
+
+void HttpServer::run() {
+  if (is_running_.exchange(true)) {
+    return;
+  }
+
+  std::cout << "HTTP server started on port "
+            << acceptor_.local_endpoint().port() << std::endl;
+
+  accept_loop();
 }
 
-void HttpServer::accept() {
-  while (true) {
+void HttpServer::stop() {
+  if (!is_running_.exchange(false)) {
+    return;
+  }
+
+  boost::system::error_code ec;
+  acceptor_.close(ec);
+
+  if (ec) {
+    std::cerr << "Failed to close acceptor: " << ec.message() << std::endl;
+  }
+
+  socket_queue_.close();
+  thread_pool_.shutdown();
+
+  std::cout << "HTTP server stopped" << std::endl;
+}
+
+void HttpServer::accept_loop() {
+  while (is_running_) {
+    boost::system::error_code ec;
     tcp::socket socket(io_context_);
-    acceptor_.accept(socket);
-    socket_queue_.push(std::move(socket));
+
+    acceptor_.accept(socket, ec);
+
+    if (ec) {
+      if (!is_running_) {
+        break;
+      }
+
+      std::cerr << "Accept error: " << ec.message() << std::endl;
+      continue;
+    }
+
+    try {
+      socket_queue_.push(std::move(socket));
+    } catch (const std::exception &e) {
+      std::cerr << "Failed to push socket: " << e.what() << std::endl;
+    }
   }
 }
+
+HttpServer::~HttpServer() { stop(); }
 } // namespace shortener

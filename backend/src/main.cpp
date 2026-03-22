@@ -6,4 +6,6 @@ int main() {
 
   const size_t THREADS = 6;
   shortener::HttpServer server(io_context, 8080, THREADS);
+
+  server.run();
 }

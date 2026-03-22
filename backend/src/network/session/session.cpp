@@ -1,7 +1,6 @@
 #include "session.hpp"
 
 namespace shortener {
-
 HttpSession::HttpSession(tcp::socket socket, UrlShortener &shortener)
     : socket_(std::move(socket)), shortener_(shortener) {}
 

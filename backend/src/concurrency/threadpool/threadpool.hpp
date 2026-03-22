@@ -1,7 +1,7 @@
 #pragma once
 
-#include "shortener.hpp"
 #include "queue.hpp"
+#include "shortener.hpp"
 #include "types.hpp"
 #include <boost/asio.hpp>
 #include <thread>
@@ -9,17 +9,24 @@
 #include <vector>
 
 namespace shortener {
-class ThreadPool {
+class ThreadPool final {
 private:
   std::vector<std::thread> workers_;
-  ThreadSafeQueue<tcp::socket> &queue_;
-  io_context &io_context_;
+  ThreadSafeQueue<tcp::socket> &socket_queue_;
   UrlShortener &shortener_;
+  std::atomic<bool> stopping_{false};
+
+  void worker_loop();
 
 public:
   ThreadPool(ushort num_threads, ThreadSafeQueue<tcp::socket> &queue,
-             io_context &io_context, UrlShortener &shortener);
+             UrlShortener &shortener);
+
+  ThreadPool(const ThreadPool &) = delete;
+  ThreadPool &operator=(const ThreadPool &) = delete;
 
   ~ThreadPool();
+
+  void shutdown();
 };
 } // namespace shortener
