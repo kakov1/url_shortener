@@ -38,7 +38,7 @@ void ThreadPool::worker_loop() {
 
     try {
       HttpSession session(std::move(*socket_opt), shortener_);
-      session.handle();
+      session.handle_session();
     } catch (const std::exception &e) {
       std::cerr << "Worker session error: " << e.what() << std::endl;
     } catch (...) {
