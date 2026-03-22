@@ -17,13 +17,14 @@ private:
   tcp::acceptor acceptor_;
   ThreadSafeQueue<tcp::socket> socket_queue_;
   ThreadPool thread_pool_;
-  UrlShortener shortener_;
+  UrlShortener &shortener_;
   std::atomic<bool> is_running_;
 
   void accept_loop();
 
 public:
-  HttpServer(io_context &io_context, ushort port, ushort num_threads);
+  HttpServer(io_context &io_context, ushort port, ushort num_threads,
+             UrlShortener &shortener_);
 
   void run();
   void stop();

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED COMPONENTS system program_options)
 find_package(nlohmann_json REQUIRED)
 
 add_executable(server
@@ -31,5 +31,6 @@ target_include_directories(server PRIVATE
 target_link_libraries(server PRIVATE
     Boost::system
     nlohmann_json::nlohmann_json
+    Boost::program_options
     pthread
 )
