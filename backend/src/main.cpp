@@ -34,8 +34,9 @@ int main(int argc, char *argv[]) {
     }
 
     shortener::io_context io_context;
-    shortener::UrlShortener shortener;
-    shortener::HttpServer server(io_context, port, threads, shortener);
+    shortener::InMemoryUrlRepository url_repository;
+    shortener::UrlService url_service{url_repository};
+    shortener::HttpServer server(io_context, port, threads, url_service);
 
     std::cout << "Starting server on port " << port << " with " << threads
               << " worker threads" << std::endl;

@@ -16,7 +16,8 @@ add_executable(server
 
     src/concurrency/threadpool/threadpool.cpp
 
-    src/logic/shortener.cpp
+    src/logic/in_memory_url_repository.cpp
+    src/logic/url_service.cpp
 )
 
 target_include_directories(server PRIVATE

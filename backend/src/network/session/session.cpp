@@ -15,8 +15,8 @@ namespace shortener {
 
 using json = nlohmann::json;
 
-HttpSession::HttpSession(tcp::socket socket, UrlShortener &shortener)
-    : socket_(std::move(socket)), shortener_(shortener) {}
+HttpSession::HttpSession(tcp::socket socket, UrlService &url_service)
+    : socket_(std::move(socket)), url_service_(url_service) {}
 
 void HttpSession::handle_session() {
   try {
@@ -81,7 +81,7 @@ HttpSession::handle_shorten(const http::request<http::string_body> &request) {
                                   request.version(), "application/json");
     }
 
-    std::string short_key = shortener_.shorten(original_url);
+    std::string short_key = url_service_.shorten(original_url);
 
     json response;
     response["short_key"] = short_key;
@@ -122,7 +122,7 @@ HttpSession::handle_redirect(const http::request<http::string_body> &request) {
   std::string short_key = target.substr(1);
 
   try {
-    std::string original_url = shortener_.resolve(short_key);
+    std::string original_url = url_service_.restore(short_key);
 
     if (original_url.empty()) {
       json error;

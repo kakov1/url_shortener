@@ -1,7 +1,7 @@
 #pragma once
 
 #include "queue.hpp"
-#include "shortener.hpp"
+#include "url_service.hpp"
 #include "types.hpp"
 #include <boost/asio.hpp>
 #include <thread>
@@ -13,14 +13,14 @@ class ThreadPool final {
 private:
   std::vector<std::thread> workers_;
   ThreadSafeQueue<tcp::socket> &socket_queue_;
-  UrlShortener &shortener_;
+  UrlService &url_service_;
   std::atomic<bool> stopping_{false};
 
   void worker_loop();
 
 public:
   ThreadPool(ushort num_threads, ThreadSafeQueue<tcp::socket> &queue,
-             UrlShortener &shortener);
+             UrlService &url_service);
 
   ThreadPool(const ThreadPool &) = delete;
   ThreadPool &operator=(const ThreadPool &) = delete;

@@ -4,8 +4,8 @@
 
 namespace shortener {
 ThreadPool::ThreadPool(ushort num_threads, ThreadSafeQueue<tcp::socket> &queue,
-                       UrlShortener &shortener)
-    : socket_queue_(queue), shortener_(shortener) {
+                       UrlService &url_service)
+    : socket_queue_(queue), url_service_(url_service) {
   workers_.reserve(num_threads);
 
   for (size_t i = 0; i < num_threads; ++i)
@@ -37,7 +37,7 @@ void ThreadPool::worker_loop() {
     }
 
     try {
-      HttpSession session(std::move(*socket_opt), shortener_);
+      HttpSession session(std::move(*socket_opt), url_service_);
       session.handle_session();
     } catch (const std::exception &e) {
       std::cerr << "Worker session error: " << e.what() << std::endl;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shortener.hpp"
+#include "url_service.hpp"
 #include "types.hpp"
 
 namespace shortener {
@@ -8,7 +8,7 @@ namespace shortener {
 class HttpSession {
 private:
   tcp::socket socket_;
-  UrlShortener &shortener_;
+  UrlService &url_service_;
 
   http::response<http::string_body>
   handle_request(const http::request<http::string_body> &request);
@@ -27,7 +27,7 @@ private:
   make_redirect_response(const std::string &location, unsigned version);
 
 public:
-  HttpSession(tcp::socket socket, UrlShortener &shortener);
+  HttpSession(tcp::socket socket, UrlService &url_service);
 
   void handle_session();
 };

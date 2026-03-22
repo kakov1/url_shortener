@@ -4,12 +4,11 @@
 namespace shortener {
 
 HttpServer::HttpServer(io_context &io_context, ushort port, ushort num_threads,
-                       UrlShortener &shortener)
+                       UrlService &url_service)
     : io_context_(io_context),
       acceptor_(io_context, tcp::endpoint(tcp::v4(), port)),
-      shortener_(shortener),
-      thread_pool_(num_threads, socket_queue_, shortener_), is_running_{false} {
-}
+      thread_pool_(num_threads, socket_queue_, url_service), is_running_{
+                                                                 false} {}
 
 void HttpServer::run() {
   if (is_running_.exchange(true)) {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shortener.hpp"
+#include "in_memory_url_repository.hpp"
 #include "threadpool.hpp"
 #include "types.hpp"
 #include <boost/asio.hpp>
@@ -17,14 +17,13 @@ private:
   tcp::acceptor acceptor_;
   ThreadSafeQueue<tcp::socket> socket_queue_;
   ThreadPool thread_pool_;
-  UrlShortener &shortener_;
   std::atomic<bool> is_running_;
 
   void accept_loop();
 
 public:
   HttpServer(io_context &io_context, ushort port, ushort num_threads,
-             UrlShortener &shortener_);
+             UrlService &url_service_);
 
   void run();
   void stop();
