@@ -15,8 +15,9 @@ namespace shortener {
 
 using json = nlohmann::json;
 
-HttpSession::HttpSession(tcp::socket socket, UrlService &url_service)
-    : socket_(std::move(socket)), url_service_(url_service) {}
+HttpSession::HttpSession(tcp::socket socket, UrlService &url_service,
+                         ushort port)
+    : socket_(std::move(socket)), url_service_(url_service), port_(port) {}
 
 void HttpSession::handle_session() {
   try {
@@ -85,7 +86,8 @@ HttpSession::handle_shorten(const http::request<http::string_body> &request) {
 
     json response;
     response["short_key"] = short_key;
-    response["short_url"] = "http://localhost:8080/" + short_key;
+    response["short_url"] =
+        "http://localhost:" + std::to_string(port_) + "/" + short_key;
 
     return make_string_response(http::status::ok, response.dump(),
                                 request.version(), "application/json");

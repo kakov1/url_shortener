@@ -1,9 +1,7 @@
 #pragma once
 
 #include "url_repository.hpp"
-#include <mutex>
 #include <string>
-#include <unordered_map>
 
 namespace shortener {
 

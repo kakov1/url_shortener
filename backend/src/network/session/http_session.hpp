@@ -10,6 +10,7 @@ class HttpSession final : public ISession {
 private:
   tcp::socket socket_;
   UrlService &url_service_;
+  ushort port_;
 
   http::response<http::string_body>
   handle_request(const http::request<http::string_body> &request);
@@ -28,7 +29,7 @@ private:
   make_redirect_response(const std::string &location, unsigned version);
 
 public:
-  HttpSession(tcp::socket socket, UrlService &url_service);
+  HttpSession(tcp::socket socket, UrlService &url_service, ushort port);
 
   void handle_session() override;
 };

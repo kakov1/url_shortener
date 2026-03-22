@@ -1,4 +1,5 @@
 #include "server.hpp"
+#include "in_memory_url_repository.hpp"
 
 #include <boost/program_options.hpp>
 
@@ -9,14 +10,14 @@ namespace options = boost::program_options;
 
 int main(int argc, char *argv[]) {
   try {
-    ushort port = 8080;
-    ushort threads = 4;
+    shortener::ushort port = 8080;
+    shortener::ushort threads = 4;
 
     options::options_description desc("Available options");
     desc.add_options()("help,h", "show help message")(
-        "port,p", options::value<ushort>(&port)->default_value(8080),
+        "port,p", options::value<shortener::ushort>(&port)->default_value(8080),
         "server port")("threads,t",
-                       options::value<ushort>(&threads)->default_value(4),
+                       options::value<shortener::ushort>(&threads)->default_value(4),
                        "worker threads count");
 
     options::variables_map vm;

@@ -1,4 +1,6 @@
 #include "server.hpp"
+#include "http_session.hpp"
+#include "session.hpp"
 #include <iostream>
 
 namespace shortener {
@@ -7,8 +9,14 @@ HttpServer::HttpServer(io_context &io_context, ushort port, ushort num_threads,
                        UrlService &url_service)
     : io_context_(io_context),
       acceptor_(io_context, tcp::endpoint(tcp::v4(), port)),
-      thread_pool_(num_threads, socket_queue_, url_service), is_running_{
-                                                                 false} {}
+      thread_pool_(num_threads, socket_queue_,
+                   [&url_service, port](tcp::socket socket) {
+                     std::unique_ptr<ISession> session =
+                         std::make_unique<HttpSession>(std::move(socket),
+                                                       url_service, port);
+                     session->handle_session();
+                   }),
+      is_running_{false} {}
 
 void HttpServer::run() {
   if (is_running_.exchange(true)) {

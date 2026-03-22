@@ -5,12 +5,16 @@
 #include <condition_variable>
 #include <queue>
 #include <optional>
+#include <cstddef>
+#include <mutex>
+#include <stdexcept>
+#include <utility>
 
 namespace shortener {
 template <typename T> class ThreadSafeQueue final {
 private:
   std::queue<T> queue_;
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
   std::condition_variable cv_;
   bool closed_{false};
 

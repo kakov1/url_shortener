@@ -1,6 +1,6 @@
 #pragma once
 
-#include "in_memory_url_repository.hpp"
+#include "url_service.hpp"
 #include "threadpool.hpp"
 #include "types.hpp"
 #include <boost/asio.hpp>
@@ -9,6 +9,7 @@
 #include <boost/beast/version.hpp>
 #include <memory>
 #include <vector>
+#include <atomic>
 
 namespace shortener {
 class HttpServer final {
@@ -23,7 +24,7 @@ private:
 
 public:
   HttpServer(io_context &io_context, ushort port, ushort num_threads,
-             UrlService &url_service_);
+             UrlService &url_service);
 
   void run();
   void stop();
