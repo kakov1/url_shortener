@@ -1,5 +1,5 @@
 #include "threadpool.hpp"
-#include "session.hpp"
+#include "http_session.hpp"
 #include <iostream>
 
 namespace shortener {
@@ -37,8 +37,10 @@ void ThreadPool::worker_loop() {
     }
 
     try {
-      HttpSession session(std::move(*socket_opt), url_service_);
-      session.handle_session();
+      std::unique_ptr<ISession> session =
+          std::make_unique<HttpSession>(std::move(*socket_opt), url_service_);
+
+      session->handle_session();
     } catch (const std::exception &e) {
       std::cerr << "Worker session error: " << e.what() << std::endl;
     } catch (...) {

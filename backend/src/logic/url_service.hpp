@@ -7,7 +7,7 @@
 
 namespace shortener {
 
-class UrlService {
+class UrlService final {
 private:
   IUrlRepository &repository_;
 

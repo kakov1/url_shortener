@@ -1,4 +1,4 @@
-add_library(network server/server.cpp session/session.cpp)
+add_library(network server/server.cpp session/http_session.cpp)
 
 target_include_directories(network
     PUBLIC 

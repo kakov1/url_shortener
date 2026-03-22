@@ -52,6 +52,7 @@ std::string UrlService::restore(const std::string &short_key) const {
 std::string UrlService::generate_short_key(const std::string &original_url,
                                            std::size_t attempt) const {
   std::string seed = original_url;
+
   if (attempt > 0) {
     seed += "#" + std::to_string(attempt);
   }
@@ -81,6 +82,7 @@ std::string UrlService::encode_base62(std::size_t value) const {
   }
 
   std::string result;
+  
   while (value > 0) {
     result.push_back(alphabet[value % 62]);
     value /= 62;

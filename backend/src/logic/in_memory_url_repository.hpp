@@ -8,7 +8,7 @@
 
 namespace shortener {
 
-class InMemoryUrlRepository : public IUrlRepository {
+class InMemoryUrlRepository final : public IUrlRepository {
 private:
   mutable std::mutex mutex_;
   std::unordered_map<std::string, std::string> short_to_original_;

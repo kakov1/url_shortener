@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace shortener {
-class HttpServer {
+class HttpServer final {
 private:
   io_context &io_context_;
   tcp::acceptor acceptor_;

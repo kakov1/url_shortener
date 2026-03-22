@@ -12,7 +12,7 @@ add_executable(server
     src/main.cpp
 
     src/network/server/server.cpp
-    src/network/session/session.cpp
+    src/network/session/http_session.cpp
 
     src/concurrency/threadpool/threadpool.cpp
 
