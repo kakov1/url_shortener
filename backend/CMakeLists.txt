@@ -10,6 +10,7 @@ option(BUILD_TESTING "Build tests" OFF)
 find_package(Boost REQUIRED COMPONENTS system program_options)
 find_package(nlohmann_json REQUIRED)
 find_package(Threads REQUIRED)
+find_package(libpqxx REQUIRED)
 
 add_subdirectory(src/entities)
 add_subdirectory(src/logic)
@@ -26,8 +27,7 @@ target_link_libraries(server
         logic
         concurrency
         network
-        user_repository
-        url_repository
+        in_memory_repositories
         Boost::system
         Boost::program_options
         Threads::Threads

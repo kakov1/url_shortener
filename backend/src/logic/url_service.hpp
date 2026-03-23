@@ -1,7 +1,7 @@
 #pragma once
 
-#include "repositories/urls/url_repository.hpp"
-#include "repositories/users/user_repository.hpp"
+#include "repositories/url_repository.hpp"
+#include "repositories/user_repository.hpp"
 #include <string>
 
 namespace shortener {

@@ -53,4 +53,4 @@ private:
                                  const std::string &body) const;
 };
 
-} // namespace shortener::network
+} // namespace shortener

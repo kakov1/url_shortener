@@ -1,28 +1,27 @@
 #pragma once
 
 #include <cstdint>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include <pqxx/pqxx>
+
 #include "entities/entities.hpp"
-#include "repositories/urls/url_repository.hpp"
+#include "repositories/url_repository.hpp"
 
 namespace shortener {
 
-class InMemoryUrlRepository final : public IUrlRepository {
+class PostgresUrlRepository final : public IUrlRepository {
 private:
-  mutable std::mutex mutex_;
-  std::vector<Url> urls_;
-  std::int64_t next_id_{1};
+  pqxx::connection &connection_;
 
 private:
-  std::string make_created_at() const;
+  static Url map_row_to_url(const pqxx::row &row);
 
 public:
-  InMemoryUrlRepository() = default;
-  ~InMemoryUrlRepository() override = default;
+  explicit PostgresUrlRepository(pqxx::connection &connection);
+  ~PostgresUrlRepository() override = default;
 
   std::optional<Url> find_by_id(std::int64_t id) const override;
   std::optional<Url>

@@ -1,14 +1,14 @@
 #include "logic/url_service.hpp"
 #include "network/server/server.hpp"
-#include "repositories/urls/in_memory_url_repository.hpp"
-#include "repositories/users/in_memory_user_repository.hpp"
+#include "repositories/in_memory/urls/in_memory_url_repository.hpp"
+#include "repositories/in_memory/users/in_memory_user_repository.hpp"
 
 #include <boost/program_options.hpp>
 
 #include <exception>
 #include <iostream>
 
-// TODO: postgresql, redis
+// TODO: postgresql, redis, docker-compose, tests
 
 namespace options = boost::program_options;
 

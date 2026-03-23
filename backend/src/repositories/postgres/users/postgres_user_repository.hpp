@@ -1,25 +1,23 @@
 #pragma once
 
 #include <cstdint>
-#include <mutex>
 #include <optional>
 #include <string>
-#include <vector>
+
+#include <pqxx/pqxx>
 
 #include "entities/entities.hpp"
-#include "user_repository.hpp"
+#include "repositories/user_repository.hpp"
 
 namespace shortener {
 
-class InMemoryUserRepository final : public IUserRepository {
+class PostgresUserRepository final : public IUserRepository {
 private:
-  mutable std::mutex mutex_;
-  std::vector<User> users_;
-  std::int64_t next_id_{1};
+  pqxx::connection &connection_;
 
 public:
-  InMemoryUserRepository() = default;
-  ~InMemoryUserRepository() override = default;
+  explicit PostgresUserRepository(pqxx::connection &connection);
+  ~PostgresUserRepository() override = default;
 
   std::optional<User> find_by_id(std::int64_t id) const override;
   std::optional<User>
