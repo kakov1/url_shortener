@@ -5,7 +5,7 @@
 namespace shortener {
 ThreadPool::ThreadPool(ushort num_threads, ThreadSafeQueue<tcp::socket> &queue,
                        SocketHandler handler)
-    : socket_queue_(queue), handler_(handler) {
+    : socket_queue_(queue), handler_(std::move(handler)) {
   workers_.reserve(num_threads);
 
   for (size_t i = 0; i < num_threads; ++i)

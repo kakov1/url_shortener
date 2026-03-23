@@ -1,23 +1,33 @@
 #pragma once
 
-#include "url_repository.hpp"
+#include "repositories/urls/url_repository.hpp"
+#include "repositories/users/user_repository.hpp"
 #include <string>
 
 namespace shortener {
 
-class UrlService final {
+class UrlService {
 private:
-  IUrlRepository &repository_;
+  IUrlRepository &url_repository_;
+  IUserRepository &user_repository_;
 
-  std::string generate_short_key(const std::string &original_url,
-                                 std::size_t attempt = 0) const;
-  std::string encode_base62(std::size_t value) const;
+private:
+  std::string generate_short_key(const std::string &original_url) const;
+  std::string encode_base62(std::uint64_t value) const;
+  std::string build_candidate_key(const std::string &original_url,
+                                  std::uint64_t attempt) const;
 
 public:
-  explicit UrlService(IUrlRepository &repository);
+  UrlService(IUrlRepository &url_repository, IUserRepository &user_repository);
 
-  std::string shorten(const std::string &original_url);
-  std::string restore(const std::string &short_key) const;
+  User create_user(const std::string &username);
+
+  Url shorten_url(const std::string &original_url,
+                  const std::optional<std::int64_t> &user_id = std::nullopt);
+
+  std::optional<std::string> resolve_url(const std::string &short_key) const;
+
+  std::vector<Url> get_user_urls(std::int64_t user_id) const;
 };
 
 } // namespace shortener

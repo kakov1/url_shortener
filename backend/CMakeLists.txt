@@ -11,10 +11,11 @@ find_package(Boost REQUIRED COMPONENTS system program_options)
 find_package(nlohmann_json REQUIRED)
 find_package(Threads REQUIRED)
 
-add_subdirectory(src/core)
+add_subdirectory(src/entities)
 add_subdirectory(src/logic)
 add_subdirectory(src/concurrency)
 add_subdirectory(src/network)
+add_subdirectory(src/repositories)
 
 add_executable(server
     src/main.cpp
@@ -22,10 +23,11 @@ add_executable(server
 
 target_link_libraries(server
     PRIVATE
-        core
         logic
         concurrency
         network
+        user_repository
+        url_repository
         Boost::system
         Boost::program_options
         Threads::Threads

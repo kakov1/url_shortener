@@ -2,93 +2,127 @@
 
 #include <functional>
 #include <stdexcept>
+#include <utility>
 
 namespace shortener {
 
-UrlService::UrlService(IUrlRepository &repository) : repository_(repository) {}
+UrlService::UrlService(IUrlRepository &url_repository,
+                       IUserRepository &user_repository)
+    : url_repository_(url_repository), user_repository_(user_repository) {}
 
-std::string UrlService::shorten(const std::string &original_url) {
+User UrlService::create_user(const std::string &username) {
+  if (username.empty()) {
+    throw std::invalid_argument("username cannot be empty");
+  }
+
+  auto existing_user = user_repository_.find_by_username(username);
+
+  if (existing_user.has_value()) {
+    return existing_user.value();
+  }
+
+  return user_repository_.create(username);
+}
+
+Url UrlService::shorten_url(const std::string &original_url,
+                            const std::optional<std::int64_t> &user_id) {
   if (original_url.empty()) {
-    throw std::invalid_argument("original_url must not be empty");
+    throw std::invalid_argument("original_url cannot be empty");
   }
 
-  auto existing = repository_.find_short_key_by_original(original_url);
-  if (existing.has_value()) {
-    return *existing;
-  }
+  if (user_id.has_value()) {
+    auto user = user_repository_.find_by_id(user_id.value());
 
-  for (std::size_t attempt = 0; attempt < 32; ++attempt) {
-    std::string short_key = generate_short_key(original_url, attempt);
-
-    auto collision = repository_.find_original_by_short_key(short_key);
-
-    if (!collision.has_value()) {
-      repository_.save(short_key, original_url);
-      return short_key;
+    if (!user.has_value()) {
+      throw std::runtime_error("user not found");
     }
+  }
 
-    if (*collision == original_url) {
-      return short_key;
+  auto existing_url = url_repository_.find_by_original_url(original_url);
+
+  if (existing_url.has_value()) {
+    return existing_url.value();
+  }
+
+  constexpr std::uint64_t max_attempts = 100;
+
+  for (std::uint64_t attempt = 0; attempt < max_attempts; ++attempt) {
+    const std::string short_key = build_candidate_key(original_url, attempt);
+
+    if (!url_repository_.exists_by_short_key(short_key)) {
+      return url_repository_.create(original_url, short_key, user_id);
     }
   }
 
   throw std::runtime_error("failed to generate unique short key");
 }
 
-std::string UrlService::restore(const std::string &short_key) const {
+std::optional<std::string>
+UrlService::resolve_url(const std::string &short_key) const {
   if (short_key.empty()) {
-    return "";
+    return std::nullopt;
   }
 
-  auto original = repository_.find_original_by_short_key(short_key);
+  auto url = url_repository_.find_by_short_key(short_key);
 
-  if (!original.has_value()) {
-    return "";
+  if (!url.has_value()) {
+    return std::nullopt;
   }
 
-  return *original;
+  return url->original_url;
 }
 
-std::string UrlService::generate_short_key(const std::string &original_url,
-                                           std::size_t attempt) const {
-  std::string seed = original_url;
+std::vector<Url> UrlService::get_user_urls(std::int64_t user_id) const {
+  auto user = user_repository_.find_by_id(user_id);
 
-  if (attempt > 0) {
-    seed += "#" + std::to_string(attempt);
+  if (!user.has_value()) {
+    throw std::runtime_error("user not found");
   }
 
-  std::size_t hash_value = std::hash<std::string>{}(seed);
+  return url_repository_.find_all_by_user_id(user_id);
+}
+
+std::string
+UrlService::generate_short_key(const std::string &original_url) const {
+  std::uint64_t hash_value =
+      static_cast<std::uint64_t>(std::hash<std::string>{}(original_url));
+
   std::string encoded = encode_base62(hash_value);
 
-  constexpr std::size_t kKeyLength = 6;
+  constexpr std::size_t desired_length = 8;
 
-  if (encoded.size() < kKeyLength) {
-    encoded.insert(encoded.begin(), kKeyLength - encoded.size(), '0');
-  }
-
-  if (encoded.size() > kKeyLength) {
-    encoded = encoded.substr(0, kKeyLength);
+  if (encoded.length() > desired_length) {
+    encoded = encoded.substr(0, desired_length);
   }
 
   return encoded;
 }
 
-std::string UrlService::encode_base62(std::size_t value) const {
+std::string UrlService::encode_base62(std::uint64_t value) const {
   static constexpr char alphabet[] =
-      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+      "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
   if (value == 0) {
     return "0";
   }
 
   std::string result;
-  
+
   while (value > 0) {
-    result.push_back(alphabet[value % 62]);
+    result.insert(result.begin(), alphabet[value % 62]);
     value /= 62;
   }
 
-  return std::string(result.rbegin(), result.rend());
+  return result;
+}
+
+std::string UrlService::build_candidate_key(const std::string &original_url,
+                                            std::uint64_t attempt) const {
+  if (attempt == 0) {
+    return generate_short_key(original_url);
+  }
+
+  return generate_short_key(original_url + "#" + std::to_string(attempt));
 }
 
 } // namespace shortener

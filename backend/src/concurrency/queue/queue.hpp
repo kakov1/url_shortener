@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/types.hpp"
+#include "entities/entities.hpp"
 #include <boost/asio.hpp>
 #include <condition_variable>
 #include <queue>

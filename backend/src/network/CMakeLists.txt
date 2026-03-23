@@ -10,7 +10,6 @@ target_include_directories(network
 
 target_link_libraries(network
     PUBLIC
-        core
         logic
         concurrency
         Boost::system

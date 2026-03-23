@@ -2,7 +2,7 @@
 
 #include "logic/url_service.hpp"
 #include "concurrency/threadpool/threadpool.hpp"
-#include "core/types.hpp"
+#include "entities/entities.hpp"
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>

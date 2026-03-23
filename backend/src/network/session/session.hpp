@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/types.hpp"
+#include "entities/entities.hpp"
 #include "logic/url_service.hpp"
 
 namespace shortener {

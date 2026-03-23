@@ -10,7 +10,6 @@ target_include_directories(concurrency
 
 target_link_libraries(concurrency
     PUBLIC
-        core
         logic
         Threads::Threads
 )

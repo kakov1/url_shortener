@@ -1,6 +1,5 @@
 add_library(logic
     url_service.cpp
-    in_memory_url_repository.cpp
 )
 
 target_include_directories(logic
@@ -10,5 +9,5 @@ target_include_directories(logic
 
 target_link_libraries(logic
     PUBLIC
-        core
+        entities
 )

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "concurrency/queue/queue.hpp"
-#include "core/types.hpp"
+#include "entities/entities.hpp"
 #include "logic/url_service.hpp"
 #include <atomic>
 #include <boost/asio.hpp>
