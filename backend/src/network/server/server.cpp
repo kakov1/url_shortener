@@ -1,6 +1,5 @@
 #include "server.hpp"
-#include "http_session.hpp"
-#include "session.hpp"
+#include "network/session/http_session.hpp"
 #include <iostream>
 
 namespace shortener {

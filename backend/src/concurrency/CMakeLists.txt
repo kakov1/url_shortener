@@ -1,10 +1,16 @@
-add_library(concurrency queue/queue.cpp threadpool/threadpool.cpp)
+add_library(concurrency
+    queue/queue.cpp
+    threadpool/threadpool.cpp
+)
 
 target_include_directories(concurrency
-    PUBLIC 
-    queue
-    threadpool
-    ../network/session
-    ../core
-    ../logic
+    PUBLIC
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(concurrency
+    PUBLIC
+        core
+        logic
+        Threads::Threads
 )

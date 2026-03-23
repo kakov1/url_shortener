@@ -1,8 +1,8 @@
 #pragma once
 
 #include "session.hpp"
-#include "types.hpp"
-#include "url_service.hpp"
+#include "core/types.hpp"
+#include "logic/url_service.hpp"
 
 namespace shortener {
 

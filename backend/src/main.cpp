@@ -1,10 +1,12 @@
-#include "server.hpp"
-#include "in_memory_url_repository.hpp"
+#include "network/server/server.hpp"
+#include "logic/in_memory_url_repository.hpp"
 
 #include <boost/program_options.hpp>
 
 #include <exception>
 #include <iostream>
+
+// TODO: cmake, refactoring, postgresql, redis
 
 namespace options = boost::program_options;
 

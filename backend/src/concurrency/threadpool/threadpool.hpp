@@ -1,8 +1,8 @@
 #pragma once
 
-#include "queue.hpp"
-#include "types.hpp"
-#include "url_service.hpp"
+#include "concurrency/queue/queue.hpp"
+#include "core/types.hpp"
+#include "logic/url_service.hpp"
 #include <atomic>
 #include <boost/asio.hpp>
 #include <thread>
