@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
       return 0;
     }
 
-    if (num_threads == 0) {
+    if (num_threads <= 0) {
       throw std::invalid_argument("threads must be greater than zero");
     }
 
@@ -64,11 +64,10 @@ int main(int argc, char *argv[]) {
 
     shortener::PostgresUrlRepository url_repository(connection_pool);
     shortener::PostgresUserRepository user_repository(connection_pool);
+    
     shortener::UrlService url_service(url_repository, user_repository);
 
-    shortener::io_context io_context;
-
-    shortener::HttpServer server(io_context, port, num_threads, url_service);
+    shortener::HttpServer server(port, num_threads, url_service);
 
     std::cout << "Server started on port " << port << std::endl;
     std::cout << "Worker threads: " << num_threads << std::endl;

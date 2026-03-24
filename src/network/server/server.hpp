@@ -14,7 +14,7 @@
 namespace shortener {
 class HttpServer final {
 private:
-  io_context &io_context_;
+  io_context io_context_;
   tcp::acceptor acceptor_;
   ThreadSafeQueue<tcp::socket> socket_queue_;
   ThreadPool thread_pool_;
@@ -23,7 +23,7 @@ private:
   void accept_loop();
 
 public:
-  HttpServer(io_context &io_context, ushort port, ushort num_threads,
+  HttpServer(ushort port, ushort num_threads,
              UrlService &url_service);
 
   void run();

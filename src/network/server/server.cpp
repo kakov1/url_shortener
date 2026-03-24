@@ -4,10 +4,8 @@
 
 namespace shortener {
 
-HttpServer::HttpServer(io_context &io_context, ushort port, ushort num_threads,
-                       UrlService &url_service)
-    : io_context_(io_context),
-      acceptor_(io_context, tcp::endpoint(tcp::v4(), port)),
+HttpServer::HttpServer(ushort port, ushort num_threads, UrlService &url_service)
+    : acceptor_(io_context_, tcp::endpoint(tcp::v4(), port)),
       thread_pool_(num_threads, socket_queue_,
                    [&url_service, port](tcp::socket socket) {
                      std::unique_ptr<ISession> session =
