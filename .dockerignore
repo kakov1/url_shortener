@@ -1,0 +1,10 @@
+build/
+.git/
+.gitignore
+*.log
+*.tar
+*.zip
+*.o
+*.a
+*.so
+*.out
