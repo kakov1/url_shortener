@@ -45,7 +45,7 @@ public:
 
 public:
   PostgresConnectionPool(const std::string &connection_string,
-                         std::size_t pool_size);
+                         std::size_t pool_size = 8);
 
   ConnectionGuard acquire();
 };

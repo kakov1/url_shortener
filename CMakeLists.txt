@@ -17,6 +17,7 @@ add_subdirectory(src/logic)
 add_subdirectory(src/concurrency)
 add_subdirectory(src/network)
 add_subdirectory(src/repositories)
+add_subdirectory(src/app/config)
 
 add_executable(shortener
     src/app/main.cpp
@@ -30,6 +31,7 @@ target_include_directories(shortener
 target_link_libraries(shortener
     PRIVATE
         logic
+        config
         concurrency
         network
         postgres_repositories
