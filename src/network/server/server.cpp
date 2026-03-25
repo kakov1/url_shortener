@@ -5,7 +5,7 @@
 namespace shortener {
 
 HttpServer::HttpServer(ushort port, ushort num_threads, UrlService &url_service)
-    : acceptor_(io_context_, tcp::endpoint(tcp::v4(), port)),
+    : io_context_(), acceptor_(io_context_),
       thread_pool_(num_threads, socket_queue_,
                    [&url_service, port](tcp::socket socket) {
                      std::unique_ptr<ISession> session =
@@ -13,7 +13,29 @@ HttpServer::HttpServer(ushort port, ushort num_threads, UrlService &url_service)
                                                        url_service, port);
                      session->handle_session();
                    }),
-      is_running_{false} {}
+      is_running_{false} {
+  boost::system::error_code ec;
+
+  acceptor_.open(tcp::v4(), ec);
+
+  if (ec)
+    throw std::runtime_error("failed to open acceptor: " + ec.message());
+
+  acceptor_.set_option(boost::asio::socket_base::reuse_address(true), ec);
+
+  if (ec)
+    throw std::runtime_error("failed to set reuse_address: " + ec.message());
+
+  acceptor_.bind(tcp::endpoint(tcp::v4(), port), ec);
+
+  if (ec)
+    throw std::runtime_error("failed to bind acceptor: " + ec.message());
+
+  acceptor_.listen(boost::asio::socket_base::max_listen_connections, ec);
+
+  if (ec)
+    throw std::runtime_error("failed to listen: " + ec.message());
+}
 
 void HttpServer::run() {
   if (is_running_.exchange(true)) {
@@ -23,7 +45,12 @@ void HttpServer::run() {
   std::cout << "HTTP server started on port "
             << acceptor_.local_endpoint().port() << std::endl;
 
-  accept_loop();
+  try {
+    accept_loop();
+  } catch (...) {
+    stop();
+    throw;
+  }
 }
 
 void HttpServer::stop() {
@@ -32,11 +59,17 @@ void HttpServer::stop() {
   }
 
   boost::system::error_code ec;
+
+  acceptor_.cancel(ec);
+
+  if (ec)
+    std::cerr << "Failed to cancel acceptor: " << ec.message() << std::endl;
+
+  ec.clear();
   acceptor_.close(ec);
 
-  if (ec) {
+  if (ec)
     std::cerr << "Failed to close acceptor: " << ec.message() << std::endl;
-  }
 
   socket_queue_.close();
   thread_pool_.shutdown();
@@ -64,6 +97,12 @@ void HttpServer::accept_loop() {
       socket_queue_.push(std::move(socket));
     } catch (const std::exception &e) {
       std::cerr << "Failed to push socket: " << e.what() << std::endl;
+
+      boost::system::error_code shutdown_ec;
+      socket.shutdown(tcp::socket::shutdown_both, shutdown_ec);
+
+      boost::system::error_code close_ec;
+      socket.close(close_ec);
     }
   }
 }

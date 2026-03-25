@@ -33,6 +33,11 @@ void HttpSession::handle_session() {
         500, "Internal Server Error", "Internal Server Error");
     write_response(response);
   }
+
+  boost::system::error_code ec;
+  socket_.shutdown(tcp::socket::shutdown_both, ec);
+  ec.clear();
+  socket_.close(ec);
 }
 
 std::string HttpSession::read_request() {
