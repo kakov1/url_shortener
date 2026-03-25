@@ -22,7 +22,8 @@ jobs:
             ninja-build \
             libboost-system-dev \
             libboost-program-options-dev \
-            nlohmann-json3-dev
+            nlohmann-json3-dev \
+            libpqxx-dev   
 
       - name: Configure project with tests
         run: cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
