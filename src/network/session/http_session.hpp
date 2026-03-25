@@ -1,8 +1,13 @@
 #pragma once
 
+#include <cstdint>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
 
 #include "entities/entities.hpp"
 #include "logic/url_service.hpp"
@@ -15,26 +20,27 @@ private:
   tcp::socket socket_;
   UrlService &url_service_;
   ushort port_;
+  beast::flat_buffer buffer_;
 
 public:
-  HttpSession(tcp::socket socket, UrlService &url_service, unsigned short port);
+  HttpSession(tcp::socket socket, UrlService &url_service, ushort port);
 
   void handle_session() override;
 
 private:
-  std::string read_request();
-  void write_response(const std::string &response);
+  using Request = http::request<http::string_body>;
+  using Response = http::response<http::string_body>;
 
-  std::string handle_request(const std::string &request);
-  std::string handle_post(const std::string &request);
-  std::string handle_post_users(const std::string &request);
-  std::string handle_post_shorten(const std::string &request);
-  std::string handle_get(const std::string &request);
-  std::string handle_get_user_urls(const std::string &path);
+  Request read_request();
 
-  std::string extract_method(const std::string &request) const;
-  std::string extract_path(const std::string &request) const;
-  std::string extract_body(const std::string &request) const;
+  void write_response(const Response &response);
+
+  Response handle_request(const Request &request);
+  Response handle_post(const Request &request);
+  Response handle_post_users(const Request &request);
+  Response handle_post_shorten(const Request &request);
+  Response handle_get(const Request &request);
+  Response handle_get_user_urls(const std::string& path, unsigned version);
 
   std::string extract_url_from_json(const std::string &body) const;
   std::string extract_user_id_from_json(const std::string &body) const;
@@ -43,14 +49,14 @@ private:
   bool is_user_urls_path(const std::string &path) const;
   std::int64_t extract_user_id_from_path(const std::string &path) const;
 
-  std::string make_json_response(int status_code,
-                                 const std::string &status_text,
-                                 const std::string &body) const;
+  Response make_json_response(http::status status, const std::string &body,
+                              unsigned version) const;
 
-  std::string make_redirect_response(const std::string &location) const;
-  std::string make_text_response(int status_code,
-                                 const std::string &status_text,
-                                 const std::string &body) const;
+  Response make_text_response(http::status status, const std::string &body,
+                              unsigned version) const;
+
+  Response make_redirect_response(const std::string &location,
+                                  unsigned version) const;
 };
 
 } // namespace shortener

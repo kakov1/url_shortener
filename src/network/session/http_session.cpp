@@ -3,35 +3,47 @@
 #include <cstdint>
 #include <exception>
 #include <optional>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-#include <boost/asio.hpp>
-#include <boost/asio/read_until.hpp>
 #include <boost/asio/write.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
 #include <nlohmann/json.hpp>
 
 namespace shortener {
 
 namespace {
-constexpr std::size_t kMaxRequestSize = 8192;
+constexpr std::size_t kMaxRequestSize = 8 * 1024;
 }
 
-HttpSession::HttpSession(boost::asio::ip::tcp::socket socket,
-                         UrlService &url_service, unsigned short port)
-    : socket_(std::move(socket)), url_service_(url_service), port_(port) {}
+HttpSession::HttpSession(tcp::socket socket, UrlService &url_service,
+                         unsigned short port)
+    : socket_(std::move(socket)), url_service_(url_service), port_(port),
+      buffer_() {}
 
 void HttpSession::handle_session() {
   try {
-    const std::string request = read_request();
-    const std::string response = handle_request(request);
+    const Request request = read_request();
+    const Response response = handle_request(request);
     write_response(response);
+  } catch (const beast::system_error &ex) {
+    if (ex.code() != http::error::end_of_stream) {
+      try {
+        const Response response = make_text_response(
+            http::status::internal_server_error, "Internal Server Error", 11);
+        write_response(response);
+      } catch (...) {
+      }
+    }
   } catch (const std::exception &) {
-    const std::string response = make_text_response(
-        500, "Internal Server Error", "Internal Server Error");
-    write_response(response);
+    try {
+      const Response response = make_text_response(
+          http::status::internal_server_error, "Internal Server Error", 11);
+      write_response(response);
+    } catch (...) {
+    }
   }
 
   boost::system::error_code ec;
@@ -40,73 +52,35 @@ void HttpSession::handle_session() {
   socket_.close(ec);
 }
 
-std::string HttpSession::read_request() {
-  boost::asio::streambuf buffer;
-  boost::asio::read_until(socket_, buffer, "\r\n\r\n");
+HttpSession::Request HttpSession::read_request() {
+  Request request;
+  http::read(socket_, buffer_, request);
 
-  std::istream stream(&buffer);
-  std::string request_headers((std::istreambuf_iterator<char>(stream)),
-                              std::istreambuf_iterator<char>());
-
-  const std::size_t header_end = request_headers.find("\r\n\r\n");
-  if (header_end == std::string::npos) {
-    throw std::runtime_error("invalid HTTP request");
+  if (request.body().size() > kMaxRequestSize) {
+    throw std::runtime_error("request too large");
   }
 
-  std::size_t content_length = 0;
-  {
-    const std::string header_name = "Content-Length:";
-    const std::size_t pos = request_headers.find(header_name);
-
-    if (pos != std::string::npos) {
-      const std::size_t value_start = pos + header_name.size();
-      const std::size_t line_end = request_headers.find("\r\n", value_start);
-      const std::string raw_value =
-          request_headers.substr(value_start, line_end - value_start);
-
-      std::stringstream ss(raw_value);
-      ss >> content_length;
-    }
-  }
-
-  std::string full_request = request_headers;
-  const std::size_t current_body_size = full_request.size() - (header_end + 4);
-
-  if (content_length > current_body_size) {
-    const std::size_t remaining = content_length - current_body_size;
-
-    if (full_request.size() + remaining > kMaxRequestSize) {
-      throw std::runtime_error("request too large");
-    }
-
-    std::string rest(remaining, '\0');
-    boost::asio::read(socket_, boost::asio::buffer(rest.data(), remaining));
-    full_request += rest;
-  }
-
-  return full_request;
+  return request;
 }
 
-void HttpSession::write_response(const std::string &response) {
-  boost::asio::write(socket_, boost::asio::buffer(response));
+void HttpSession::write_response(const Response &response) {
+  http::write(socket_, response);
 }
 
-std::string HttpSession::handle_request(const std::string &request) {
-  const std::string method = extract_method(request);
-
-  if (method == "POST") {
+HttpSession::Response HttpSession::handle_request(const Request &request) {
+  switch (request.method()) {
+  case http::verb::post:
     return handle_post(request);
-  }
-
-  if (method == "GET") {
+  case http::verb::get:
     return handle_get(request);
+  default:
+    return make_text_response(http::status::method_not_allowed,
+                              "Method Not Allowed", request.version());
   }
-
-  return make_text_response(405, "Method Not Allowed", "Method Not Allowed");
 }
 
-std::string HttpSession::handle_post(const std::string &request) {
-  const std::string path = extract_path(request);
+HttpSession::Response HttpSession::handle_post(const Request &request) {
+  const std::string path = std::string(request.target());
 
   if (path == "/users") {
     return handle_post_users(request);
@@ -116,40 +90,45 @@ std::string HttpSession::handle_post(const std::string &request) {
     return handle_post_shorten(request);
   }
 
-  return make_text_response(404, "Not Found", "Not Found");
+  return make_text_response(http::status::not_found, "Not Found",
+                            request.version());
 }
 
-std::string HttpSession::handle_post_users(const std::string &request) {
+HttpSession::Response HttpSession::handle_post_users(const Request &request) {
   try {
-    const std::string body = extract_body(request);
-    const std::string username = extract_username_from_json(body);
+    const std::string username = extract_username_from_json(request.body());
 
     const User user = url_service_.create_user(username);
 
-    nlohmann::json response_body = {{"id", user.id},
-                                    {"username", user.username}};
+    nlohmann::json response_body = {
+        {"id", user.id},
+        {"username", user.username},
+    };
 
-    return make_json_response(201, "Created", response_body.dump());
+    return make_json_response(http::status::created, response_body.dump(),
+                              request.version());
   } catch (const std::invalid_argument &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(400, "Bad Request", error_body.dump());
+    return make_json_response(http::status::bad_request, error_body.dump(),
+                              request.version());
   } catch (const nlohmann::json::exception &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(400, "Bad Request", error_body.dump());
+    return make_json_response(http::status::bad_request, error_body.dump(),
+                              request.version());
   } catch (const std::exception &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(500, "Internal Server Error", error_body.dump());
+    return make_json_response(http::status::internal_server_error,
+                              error_body.dump(), request.version());
   }
 }
 
-std::string HttpSession::handle_post_shorten(const std::string &request) {
+HttpSession::Response HttpSession::handle_post_shorten(const Request &request) {
   try {
-    const std::string body = extract_body(request);
-    const std::string original_url = extract_url_from_json(body);
-    const std::string raw_user_id = extract_user_id_from_json(body);
+    const std::string original_url = extract_url_from_json(request.body());
+    const std::string raw_user_id = extract_user_id_from_json(request.body());
 
     std::optional<std::int64_t> user_id = std::nullopt;
     if (!raw_user_id.empty()) {
@@ -164,7 +143,8 @@ std::string HttpSession::handle_post_shorten(const std::string &request) {
         {"short_key", shortened.short_key},
         {"short_url", "http://localhost:" + std::to_string(port_) + "/" +
                           shortened.short_key},
-        {"created_at", shortened.created_at}};
+        {"created_at", shortened.created_at},
+    };
 
     if (shortened.user_id.has_value()) {
       response_body["user_id"] = *shortened.user_id;
@@ -172,50 +152,58 @@ std::string HttpSession::handle_post_shorten(const std::string &request) {
       response_body["user_id"] = nullptr;
     }
 
-    return make_json_response(201, "Created", response_body.dump());
+    return make_json_response(http::status::created, response_body.dump(),
+                              request.version());
   } catch (const std::invalid_argument &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(400, "Bad Request", error_body.dump());
+    return make_json_response(http::status::bad_request, error_body.dump(),
+                              request.version());
   } catch (const nlohmann::json::exception &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(400, "Bad Request", error_body.dump());
+    return make_json_response(http::status::bad_request, error_body.dump(),
+                              request.version());
   } catch (const std::exception &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(500, "Internal Server Error", error_body.dump());
+    return make_json_response(http::status::internal_server_error,
+                              error_body.dump(), request.version());
   }
 }
 
-std::string HttpSession::handle_get(const std::string &request) {
-  const std::string path = extract_path(request);
+HttpSession::Response HttpSession::handle_get(const Request &request) {
+  const std::string path = std::string(request.target());
 
   if (path == "/health") {
     nlohmann::json response_body = {{"status", "ok"}};
 
-    return make_json_response(200, "OK", response_body.dump());
+    return make_json_response(http::status::ok, response_body.dump(),
+                              request.version());
   }
 
   if (is_user_urls_path(path)) {
-    return handle_get_user_urls(path);
+    return handle_get_user_urls(path, request.version());
   }
 
   if (path.empty() || path == "/") {
-    return make_text_response(404, "Not Found", "Not Found");
+    return make_text_response(http::status::not_found, "Not Found",
+                              request.version());
   }
 
   const std::string short_key = path.substr(1);
 
   const auto original_url = url_service_.resolve_url(short_key);
   if (!original_url.has_value()) {
-    return make_text_response(404, "Not Found", "Short URL not found");
+    return make_text_response(http::status::not_found, "Short URL not found",
+                              request.version());
   }
 
-  return make_redirect_response(*original_url);
+  return make_redirect_response(*original_url, request.version());
 }
 
-std::string HttpSession::handle_get_user_urls(const std::string &path) {
+HttpSession::Response HttpSession::handle_get_user_urls(const std::string &path,
+                                                        unsigned version) {
   try {
     const std::int64_t user_id = extract_user_id_from_path(path);
     const std::vector<Url> urls = url_service_.get_user_urls(user_id);
@@ -229,7 +217,8 @@ std::string HttpSession::handle_get_user_urls(const std::string &path) {
           {"short_key", url.short_key},
           {"short_url",
            "http://localhost:" + std::to_string(port_) + "/" + url.short_key},
-          {"created_at", url.created_at}};
+          {"created_at", url.created_at},
+      };
 
       if (url.user_id.has_value()) {
         item["user_id"] = *url.user_id;
@@ -240,54 +229,26 @@ std::string HttpSession::handle_get_user_urls(const std::string &path) {
       urls_json.push_back(item);
     }
 
-    nlohmann::json response_body = {{"user_id", user_id}, {"urls", urls_json}};
+    nlohmann::json response_body = {
+        {"user_id", user_id},
+        {"urls", urls_json},
+    };
 
-    return make_json_response(200, "OK", response_body.dump());
+    return make_json_response(http::status::ok, response_body.dump(), version);
   } catch (const std::invalid_argument &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(400, "Bad Request", error_body.dump());
+    return make_json_response(http::status::bad_request, error_body.dump(), version);
   } catch (const std::runtime_error &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(404, "Not Found", error_body.dump());
+    return make_json_response(http::status::not_found, error_body.dump(), version);
   } catch (const std::exception &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(500, "Internal Server Error", error_body.dump());
+    return make_json_response(http::status::internal_server_error,
+                              error_body.dump(), version);
   }
-}
-
-std::string HttpSession::extract_method(const std::string &request) const {
-  const std::size_t first_space = request.find(' ');
-  if (first_space == std::string::npos) {
-    throw std::runtime_error("invalid HTTP request line");
-  }
-
-  return request.substr(0, first_space);
-}
-
-std::string HttpSession::extract_path(const std::string &request) const {
-  const std::size_t first_space = request.find(' ');
-  if (first_space == std::string::npos) {
-    throw std::runtime_error("invalid HTTP request line");
-  }
-
-  const std::size_t second_space = request.find(' ', first_space + 1);
-  if (second_space == std::string::npos) {
-    throw std::runtime_error("invalid HTTP request line");
-  }
-
-  return request.substr(first_space + 1, second_space - first_space - 1);
-}
-
-std::string HttpSession::extract_body(const std::string &request) const {
-  const std::size_t body_pos = request.find("\r\n\r\n");
-  if (body_pos == std::string::npos) {
-    return {};
-  }
-
-  return request.substr(body_pos + 4);
 }
 
 std::string HttpSession::extract_url_from_json(const std::string &body) const {
@@ -402,41 +363,40 @@ HttpSession::extract_user_id_from_path(const std::string &path) const {
   return user_id;
 }
 
-std::string HttpSession::make_json_response(int status_code,
-                                            const std::string &status_text,
-                                            const std::string &body) const {
-  std::ostringstream response;
-  response << "HTTP/1.1 " << status_code << ' ' << status_text << "\r\n";
-  response << "Content-Type: application/json\r\n";
-  response << "Content-Length: " << body.size() << "\r\n";
-  response << "Connection: close\r\n";
-  response << "\r\n";
-  response << body;
-  return response.str();
+HttpSession::Response HttpSession::make_json_response(http::status status,
+                                                      const std::string &body,
+                                                      unsigned version) const {
+  Response response{status, version};
+  response.set(http::field::content_type, "application/json");
+  response.set(http::field::connection, "close");
+  response.keep_alive(false);
+  response.body() = body;
+  response.prepare_payload();
+  return response;
 }
 
-std::string
-HttpSession::make_redirect_response(const std::string &location) const {
-  std::ostringstream response;
-  response << "HTTP/1.1 302 Found\r\n";
-  response << "Location: " << location << "\r\n";
-  response << "Content-Length: 0\r\n";
-  response << "Connection: close\r\n";
-  response << "\r\n";
-  return response.str();
+HttpSession::Response HttpSession::make_text_response(http::status status,
+                                                      const std::string &body,
+                                                      unsigned version) const {
+  Response response{status, version};
+  response.set(http::field::content_type, "text/plain");
+  response.set(http::field::connection, "close");
+  response.keep_alive(false);
+  response.body() = body;
+  response.prepare_payload();
+  return response;
 }
 
-std::string HttpSession::make_text_response(int status_code,
-                                            const std::string &status_text,
-                                            const std::string &body) const {
-  std::ostringstream response;
-  response << "HTTP/1.1 " << status_code << ' ' << status_text << "\r\n";
-  response << "Content-Type: text/plain\r\n";
-  response << "Content-Length: " << body.size() << "\r\n";
-  response << "Connection: close\r\n";
-  response << "\r\n";
-  response << body;
-  return response.str();
+HttpSession::Response
+HttpSession::make_redirect_response(const std::string &location,
+                                    unsigned version) const {
+  Response response{http::status::found, version};
+  response.set(http::field::location, location);
+  response.set(http::field::connection, "close");
+  response.keep_alive(false);
+  response.body() = "";
+  response.prepare_payload();
+  return response;
 }
 
 } // namespace shortener
