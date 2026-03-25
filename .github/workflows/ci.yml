@@ -6,6 +6,32 @@ on:
   pull_request:
 
 jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            g++ \
+            ninja-build \
+            libboost-system-dev \
+            libboost-program-options-dev \
+            nlohmann-json3-dev
+
+      - name: Configure project with tests
+        run: cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
   docker-compose-check:
     runs-on: ubuntu-latest
 
@@ -33,6 +59,13 @@ jobs:
           echo "App did not become healthy in time"
           docker compose logs app postgres
           exit 1
+
+      - name: Run tests
+        run: docker compose exec -T unit ctest --output-on-failure
+
+      - name: Show logs
+        if: failure()
+        run: docker compose logs app postgres
 
       - name: Stop services
         if: always()
