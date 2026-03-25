@@ -23,7 +23,8 @@ jobs:
             libboost-system-dev \
             libboost-program-options-dev \
             nlohmann-json3-dev \
-            libpqxx-dev   
+            libpqxx-dev \
+            libgtest-dev 
 
       - name: Configure project with tests
         run: cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
@@ -60,13 +61,6 @@ jobs:
           echo "App did not become healthy in time"
           docker compose logs app postgres
           exit 1
-
-      - name: Run tests
-        run: docker compose exec -T unit ctest --output-on-failure
-
-      - name: Show logs
-        if: failure()
-        run: docker compose logs app postgres
 
       - name: Stop services
         if: always()
