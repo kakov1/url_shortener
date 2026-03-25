@@ -1,8 +1,8 @@
 add_executable(unit_tests
-    unit_tests.cpp
-    test_url_service.cpp
-    test_queue.cpp
-    test_config.cpp
+    unit_tests/unit_tests.cpp
+    unit_tests/test_url_service.cpp
+    unit_tests/test_queue.cpp
+    unit_tests/test_config.cpp
 )
 
 target_include_directories(unit_tests
