@@ -62,6 +62,13 @@ jobs:
           docker compose logs app postgres
           exit 1
 
+      - name: Run integration tests
+        run: python -m unittest tests/integration/test_http_api.py -v
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs app postgres
+
       - name: Stop services
         if: always()
         run: docker compose down -v
