@@ -10,7 +10,7 @@ namespace shortener {
 std::optional<Url> InMemoryUrlRepository::find_by_id(std::int64_t id) const {
   std::lock_guard<std::mutex> lock(mutex_);
 
-  for (auto &&url : urls_) {
+  for (const auto &url : urls_) {
     if (url.id == id) {
       return url;
     }
@@ -23,7 +23,7 @@ std::optional<Url>
 InMemoryUrlRepository::find_by_short_key(const std::string &short_key) const {
   std::lock_guard<std::mutex> lock(mutex_);
 
-  for (auto &&url : urls_) {
+  for (const auto &url : urls_) {
     if (url.short_key == short_key) {
       return url;
     }
@@ -32,12 +32,26 @@ InMemoryUrlRepository::find_by_short_key(const std::string &short_key) const {
   return std::nullopt;
 }
 
-std::optional<Url> InMemoryUrlRepository::find_by_original_url(
+std::optional<Url> InMemoryUrlRepository::find_public_by_original_url(
     const std::string &original_url) const {
   std::lock_guard<std::mutex> lock(mutex_);
 
-  for (auto &&url : urls_) {
-    if (url.original_url == original_url) {
+  for (const auto &url : urls_) {
+    if (url.original_url == original_url && !url.user_id.has_value()) {
+      return url;
+    }
+  }
+
+  return std::nullopt;
+}
+
+std::optional<Url> InMemoryUrlRepository::find_by_original_url_and_user_id(
+    const std::string &original_url, std::int64_t user_id) const {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  for (const auto &url : urls_) {
+    if (url.original_url == original_url && url.user_id.has_value() &&
+        *url.user_id == user_id) {
       return url;
     }
   }
@@ -49,7 +63,7 @@ bool InMemoryUrlRepository::exists_by_short_key(
     const std::string &short_key) const {
   std::lock_guard<std::mutex> lock(mutex_);
 
-  for (auto &&url : urls_) {
+  for (const auto &url : urls_) {
     if (url.short_key == short_key) {
       return true;
     }
@@ -63,7 +77,7 @@ Url InMemoryUrlRepository::create(const std::string &original_url,
                                   const std::optional<std::int64_t> &user_id) {
   std::lock_guard<std::mutex> lock(mutex_);
 
-  for (auto &&url : urls_) {
+  for (const auto &url : urls_) {
     if (url.short_key == short_key) {
       return url;
     }
@@ -87,8 +101,8 @@ InMemoryUrlRepository::find_all_by_user_id(std::int64_t user_id) const {
   std::vector<Url> result;
   result.reserve(urls_.size());
 
-  for (auto &&url : urls_) {
-    if (url.user_id.has_value() && url.user_id.value() == user_id) {
+  for (const auto &url : urls_) {
+    if (url.user_id.has_value() && *url.user_id == user_id) {
       result.push_back(url);
     }
   }

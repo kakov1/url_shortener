@@ -45,7 +45,8 @@ TEST_F(UrlServiceTest, ShortenUrlCreatesShortenedRecordWithoutUser) {
   EXPECT_FALSE(shortened.user_id.has_value());
 }
 
-TEST_F(UrlServiceTest, ShortenUrlReturnsExistingRecordForSameOriginalUrl) {
+TEST_F(UrlServiceTest,
+       ShortenUrlReturnsExistingPublicRecordForSameOriginalUrl) {
   const Url first = service.shorten_url("https://example.com/page");
   const Url second = service.shorten_url("https://example.com/page");
 
@@ -57,6 +58,13 @@ TEST_F(UrlServiceTest, ShortenUrlThrowsOnEmptyOriginalUrl) {
   EXPECT_THROW(service.shorten_url(""), std::invalid_argument);
 }
 
+TEST_F(UrlServiceTest, ShortenUrlThrowsOnInvalidUrlScheme) {
+  EXPECT_THROW(service.shorten_url("ftp://example.com/file"),
+               std::invalid_argument);
+  EXPECT_THROW(service.shorten_url("example.com/no-scheme"),
+               std::invalid_argument);
+}
+
 TEST_F(UrlServiceTest, ShortenUrlWithExistingUserStoresUserId) {
   const User user = service.create_user("alice");
 
@@ -65,6 +73,47 @@ TEST_F(UrlServiceTest, ShortenUrlWithExistingUserStoresUserId) {
 
   ASSERT_TRUE(shortened.user_id.has_value());
   EXPECT_EQ(*shortened.user_id, user.id);
+}
+
+TEST_F(UrlServiceTest, ShortenUrlReturnsExistingRecordForSameUserAndUrl) {
+  const User user = service.create_user("alice");
+
+  const Url first = service.shorten_url("https://example.com/private", user.id);
+  const Url second =
+      service.shorten_url("https://example.com/private", user.id);
+
+  EXPECT_EQ(first.id, second.id);
+  EXPECT_EQ(first.short_key, second.short_key);
+}
+
+TEST_F(UrlServiceTest, SameOriginalUrlCanExistAsPublicAndUserOwned) {
+  const User user = service.create_user("alice");
+
+  const Url public_url = service.shorten_url("https://example.com/shared");
+  const Url private_url =
+      service.shorten_url("https://example.com/shared", user.id);
+
+  EXPECT_NE(public_url.id, private_url.id);
+  EXPECT_NE(public_url.short_key, private_url.short_key);
+  EXPECT_FALSE(public_url.user_id.has_value());
+  ASSERT_TRUE(private_url.user_id.has_value());
+  EXPECT_EQ(*private_url.user_id, user.id);
+}
+
+TEST_F(UrlServiceTest, SameOriginalUrlCanExistForDifferentUsers) {
+  const User alice = service.create_user("alice");
+  const User bob = service.create_user("bob");
+
+  const Url alice_url =
+      service.shorten_url("https://example.com/shared", alice.id);
+  const Url bob_url = service.shorten_url("https://example.com/shared", bob.id);
+
+  EXPECT_NE(alice_url.id, bob_url.id);
+  EXPECT_NE(alice_url.short_key, bob_url.short_key);
+  ASSERT_TRUE(alice_url.user_id.has_value());
+  ASSERT_TRUE(bob_url.user_id.has_value());
+  EXPECT_EQ(*alice_url.user_id, alice.id);
+  EXPECT_EQ(*bob_url.user_id, bob.id);
 }
 
 TEST_F(UrlServiceTest, ShortenUrlThrowsWhenUserDoesNotExist) {

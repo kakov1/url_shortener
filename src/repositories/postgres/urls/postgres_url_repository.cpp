@@ -43,16 +43,36 @@ PostgresUrlRepository::find_by_short_key(const std::string &short_key) const {
   return map_row_to_url(result[0]);
 }
 
-std::optional<Url> PostgresUrlRepository::find_by_original_url(
+std::optional<Url> PostgresUrlRepository::find_public_by_original_url(
     const std::string &original_url) const {
   auto connection = connection_pool_.acquire();
   pqxx::read_transaction tx(connection.get());
 
   const pqxx::result result =
       tx.exec_params("SELECT id, original_url, short_key, user_id, created_at "
-                     "FROM urls WHERE original_url = $1 "
+                     "FROM urls "
+                     "WHERE original_url = $1 AND user_id IS NULL "
                      "ORDER BY id ASC LIMIT 1",
                      original_url);
+
+  if (result.empty()) {
+    return std::nullopt;
+  }
+
+  return map_row_to_url(result[0]);
+}
+
+std::optional<Url> PostgresUrlRepository::find_by_original_url_and_user_id(
+    const std::string &original_url, std::int64_t user_id) const {
+  auto connection = connection_pool_.acquire();
+  pqxx::read_transaction tx(connection.get());
+
+  const pqxx::result result =
+      tx.exec_params("SELECT id, original_url, short_key, user_id, created_at "
+                     "FROM urls "
+                     "WHERE original_url = $1 AND user_id = $2 "
+                     "ORDER BY id ASC LIMIT 1",
+                     original_url, user_id);
 
   if (result.empty()) {
     return std::nullopt;

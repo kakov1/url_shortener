@@ -30,18 +30,31 @@ Url UrlService::shorten_url(const std::string &original_url,
     throw std::invalid_argument("original_url cannot be empty");
   }
 
+  if (!is_valid_url(original_url)) {
+    throw std::invalid_argument(
+        "original_url must start with http:// or https://");
+  }
+
   if (user_id.has_value()) {
-    auto user = user_repository_.find_by_id(user_id.value());
+    auto user = user_repository_.find_by_id(*user_id);
 
     if (!user.has_value()) {
       throw std::runtime_error("user not found");
     }
-  }
 
-  auto existing_url = url_repository_.find_by_original_url(original_url);
+    auto existing_url = url_repository_.find_by_original_url_and_user_id(
+        original_url, *user_id);
 
-  if (existing_url.has_value()) {
-    return existing_url.value();
+    if (existing_url.has_value()) {
+      return *existing_url;
+    }
+  } else {
+    auto existing_public_url =
+        url_repository_.find_public_by_original_url(original_url);
+
+    if (existing_public_url.has_value()) {
+      return *existing_public_url;
+    }
   }
 
   constexpr std::uint64_t max_attempts = 100;
@@ -123,6 +136,10 @@ std::string UrlService::build_candidate_key(const std::string &original_url,
   }
 
   return generate_short_key(original_url + "#" + std::to_string(attempt));
+}
+
+bool UrlService::is_valid_url(const std::string &url) const {
+  return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0;
 }
 
 } // namespace shortener

@@ -27,8 +27,13 @@ public:
   std::optional<Url> find_by_id(std::int64_t id) const override;
   std::optional<Url>
   find_by_short_key(const std::string &short_key) const override;
+
   std::optional<Url>
-  find_by_original_url(const std::string &original_url) const override;
+  find_public_by_original_url(const std::string &original_url) const override;
+
+  std::optional<Url>
+  find_by_original_url_and_user_id(const std::string &original_url,
+                                   std::int64_t user_id) const override;
 
   bool exists_by_short_key(const std::string &short_key) const override;
 

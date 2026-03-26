@@ -96,7 +96,8 @@ HttpSession::Response HttpSession::handle_post(const Request &request) {
 
 HttpSession::Response HttpSession::handle_post_users(const Request &request) {
   try {
-    const std::string username = extract_username_from_json(request.body());
+    const auto parsed = parse_json_object(request.body());
+    const std::string username = extract_username_from_json(parsed);
 
     const User user = url_service_.create_user(username);
 
@@ -127,13 +128,11 @@ HttpSession::Response HttpSession::handle_post_users(const Request &request) {
 
 HttpSession::Response HttpSession::handle_post_shorten(const Request &request) {
   try {
-    const std::string original_url = extract_url_from_json(request.body());
-    const std::string raw_user_id = extract_user_id_from_json(request.body());
+    const auto parsed = parse_json_object(request.body());
 
-    std::optional<std::int64_t> user_id = std::nullopt;
-    if (!raw_user_id.empty()) {
-      user_id = std::stoll(raw_user_id);
-    }
+    const std::string original_url = extract_url_from_json(parsed);
+    const std::optional<std::int64_t> user_id =
+        extract_user_id_from_json(parsed);
 
     const Url shortened = url_service_.shorten_url(original_url, user_id);
 
@@ -164,6 +163,16 @@ HttpSession::Response HttpSession::handle_post_shorten(const Request &request) {
 
     return make_json_response(http::status::bad_request, error_body.dump(),
                               request.version());
+  } catch (const std::runtime_error &ex) {
+    nlohmann::json error_body = {{"error", ex.what()}};
+
+    if (std::string(ex.what()) == "user not found") {
+      return make_json_response(http::status::not_found, error_body.dump(),
+                                request.version());
+    }
+
+    return make_json_response(http::status::internal_server_error,
+                              error_body.dump(), request.version());
   } catch (const std::exception &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
@@ -192,8 +201,8 @@ HttpSession::Response HttpSession::handle_get(const Request &request) {
   }
 
   const std::string short_key = path.substr(1);
-
   const auto original_url = url_service_.resolve_url(short_key);
+
   if (!original_url.has_value()) {
     return make_text_response(http::status::not_found, "Short URL not found",
                               request.version());
@@ -238,11 +247,13 @@ HttpSession::Response HttpSession::handle_get_user_urls(const std::string &path,
   } catch (const std::invalid_argument &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(http::status::bad_request, error_body.dump(), version);
+    return make_json_response(http::status::bad_request, error_body.dump(),
+                              version);
   } catch (const std::runtime_error &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
-    return make_json_response(http::status::not_found, error_body.dump(), version);
+    return make_json_response(http::status::not_found, error_body.dump(),
+                              version);
   } catch (const std::exception &ex) {
     nlohmann::json error_body = {{"error", ex.what()}};
 
@@ -251,13 +262,18 @@ HttpSession::Response HttpSession::handle_get_user_urls(const std::string &path,
   }
 }
 
-std::string HttpSession::extract_url_from_json(const std::string &body) const {
+nlohmann::json HttpSession::parse_json_object(const std::string &body) const {
   const auto parsed = nlohmann::json::parse(body);
 
   if (!parsed.is_object()) {
     throw std::invalid_argument("request body must be a JSON object");
   }
 
+  return parsed;
+}
+
+std::string
+HttpSession::extract_url_from_json(const nlohmann::json &parsed) const {
   if (!parsed.contains("url")) {
     throw std::invalid_argument("field 'url' is required");
   }
@@ -274,37 +290,45 @@ std::string HttpSession::extract_url_from_json(const std::string &body) const {
   return url;
 }
 
-std::string
-HttpSession::extract_user_id_from_json(const std::string &body) const {
-  const auto parsed = nlohmann::json::parse(body);
-
-  if (!parsed.is_object()) {
-    return {};
-  }
-
+std::optional<std::int64_t>
+HttpSession::extract_user_id_from_json(const nlohmann::json &parsed) const {
   if (!parsed.contains("user_id") || parsed["user_id"].is_null()) {
-    return {};
+    return std::nullopt;
   }
 
   if (parsed["user_id"].is_number_integer()) {
-    return std::to_string(parsed["user_id"].get<std::int64_t>());
+    const std::int64_t user_id = parsed["user_id"].get<std::int64_t>();
+    if (user_id <= 0) {
+      throw std::invalid_argument("field 'user_id' must be positive");
+    }
+    return user_id;
   }
 
   if (parsed["user_id"].is_string()) {
-    return parsed["user_id"].get<std::string>();
+    const std::string raw_user_id = parsed["user_id"].get<std::string>();
+    if (raw_user_id.empty()) {
+      throw std::invalid_argument("field 'user_id' cannot be empty");
+    }
+
+    std::size_t processed = 0;
+    const std::int64_t user_id = std::stoll(raw_user_id, &processed);
+
+    if (processed != raw_user_id.size()) {
+      throw std::invalid_argument("field 'user_id' must be an integer");
+    }
+
+    if (user_id <= 0) {
+      throw std::invalid_argument("field 'user_id' must be positive");
+    }
+
+    return user_id;
   }
 
   throw std::invalid_argument("field 'user_id' must be integer or string");
 }
 
 std::string
-HttpSession::extract_username_from_json(const std::string &body) const {
-  const auto parsed = nlohmann::json::parse(body);
-
-  if (!parsed.is_object()) {
-    throw std::invalid_argument("request body must be a JSON object");
-  }
-
+HttpSession::extract_username_from_json(const nlohmann::json &parsed) const {
   if (!parsed.contains("username")) {
     throw std::invalid_argument("field 'username' is required");
   }

@@ -8,6 +8,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
+#include <nlohmann/json.hpp>
 
 #include "entities/entities.hpp"
 #include "logic/url_service.hpp"
@@ -32,7 +33,6 @@ private:
   using Response = http::response<http::string_body>;
 
   Request read_request();
-
   void write_response(const Response &response);
 
   Response handle_request(const Request &request);
@@ -40,21 +40,21 @@ private:
   Response handle_post_users(const Request &request);
   Response handle_post_shorten(const Request &request);
   Response handle_get(const Request &request);
-  Response handle_get_user_urls(const std::string& path, unsigned version);
+  Response handle_get_user_urls(const std::string &path, unsigned version);
 
-  std::string extract_url_from_json(const std::string &body) const;
-  std::string extract_user_id_from_json(const std::string &body) const;
-  std::string extract_username_from_json(const std::string &body) const;
+  nlohmann::json parse_json_object(const std::string &body) const;
+  std::string extract_url_from_json(const nlohmann::json &parsed) const;
+  std::optional<std::int64_t>
+  extract_user_id_from_json(const nlohmann::json &parsed) const;
+  std::string extract_username_from_json(const nlohmann::json &parsed) const;
 
   bool is_user_urls_path(const std::string &path) const;
   std::int64_t extract_user_id_from_path(const std::string &path) const;
 
   Response make_json_response(http::status status, const std::string &body,
                               unsigned version) const;
-
   Response make_text_response(http::status status, const std::string &body,
                               unsigned version) const;
-
   Response make_redirect_response(const std::string &location,
                                   unsigned version) const;
 };

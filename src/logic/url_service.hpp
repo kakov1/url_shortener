@@ -2,6 +2,7 @@
 
 #include "repositories/url_repository.hpp"
 #include "repositories/user_repository.hpp"
+#include <optional>
 #include <string>
 
 namespace shortener {
@@ -16,6 +17,7 @@ private:
   std::string encode_base62(std::uint64_t value) const;
   std::string build_candidate_key(const std::string &original_url,
                                   std::uint64_t attempt) const;
+  bool is_valid_url(const std::string &url) const;
 
 public:
   UrlService(IUrlRepository &url_repository, IUserRepository &user_repository);
