@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include <xxhash.h>
+
 namespace shortener {
 
 UrlService::UrlService(IUrlRepository &url_repository,
@@ -97,10 +99,10 @@ std::vector<Url> UrlService::get_user_urls(std::int64_t user_id) const {
 
 std::string
 UrlService::generate_short_key(const std::string &original_url) const {
-  std::uint64_t hash_value =
-      static_cast<std::uint64_t>(std::hash<std::string>{}(original_url));
+  XXH64_hash_t hash_value =
+      XXH64(original_url.data(), original_url.size(), 0);
 
-  std::string encoded = encode_base62(hash_value);
+  std::string encoded = encode_base62(static_cast<std::uint64_t>(hash_value));
 
   constexpr std::size_t desired_length = 8;
 

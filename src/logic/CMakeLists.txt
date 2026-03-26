@@ -10,4 +10,5 @@ target_include_directories(logic
 target_link_libraries(logic
     PUBLIC
         entities
+        xxhash
 )
