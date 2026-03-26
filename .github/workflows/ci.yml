@@ -24,7 +24,8 @@ jobs:
             libboost-program-options-dev \
             nlohmann-json3-dev \
             libpqxx-dev \
-            libgtest-dev 
+            libgtest-dev \
+            libxxhash-dev
 
       - name: Configure project with tests
         run: cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
