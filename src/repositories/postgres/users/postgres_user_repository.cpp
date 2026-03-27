@@ -28,19 +28,21 @@ std::optional<User> PostgresUserRepository::find_by_id(std::int64_t id) const {
 
 std::optional<User>
 PostgresUserRepository::find_by_username(const std::string &username) const {
-  auto connection = connection_pool_.acquire();
-  pqxx::read_transaction tx(connection.get());
+  auto conn = connection_pool_.acquire();
+  pqxx::work tx(*conn);
 
-  const pqxx::result result = tx.exec_params(
-      "SELECT id, username FROM users WHERE username = $1", username);
+  pqxx::result r = tx.exec_params(
+      "SELECT id, username FROM users WHERE username = $1",
+      username);
 
-  if (result.empty()) {
+  if (r.empty()) {
     return std::nullopt;
   }
 
-  const auto row = result[0];
-  return User{.id = row["id"].as<std::int64_t>(),
-              .username = row["username"].c_str()};
+  return User{
+      r[0]["id"].as<std::int64_t>(),
+      r[0]["username"].as<std::string>()
+  };
 }
 
 User PostgresUserRepository::create(const std::string &username) {

@@ -26,6 +26,16 @@ User UrlService::create_user(const std::string &username) {
   return user_repository_.create(username);
 }
 
+User UrlService::get_or_create_user(const std::string &username) {
+  const auto existing = user_repository_.find_by_username(username);
+
+  if (existing.has_value()) {
+    return *existing;
+  }
+
+  return user_repository_.create(username);
+}
+
 Url UrlService::shorten_url(const std::string &original_url,
                             const std::optional<std::int64_t> &user_id) {
   if (original_url.empty()) {

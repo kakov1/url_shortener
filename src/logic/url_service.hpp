@@ -23,7 +23,7 @@ public:
   UrlService(IUrlRepository &url_repository, IUserRepository &user_repository);
 
   User create_user(const std::string &username);
-
+  User get_or_create_user(const std::string &username);
   Url shorten_url(const std::string &original_url,
                   const std::optional<std::int64_t> &user_id = std::nullopt);
 

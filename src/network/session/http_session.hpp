@@ -47,6 +47,8 @@ private:
   std::optional<std::int64_t>
   extract_user_id_from_json(const nlohmann::json &parsed) const;
   std::string extract_username_from_json(const nlohmann::json &parsed) const;
+  std::optional<std::string> extract_optional_username_from_json(
+      const nlohmann::json &parsed) const;
 
   bool is_user_urls_path(const std::string &path) const;
   std::int64_t extract_user_id_from_path(const std::string &path) const;

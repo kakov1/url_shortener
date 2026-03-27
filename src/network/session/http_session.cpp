@@ -131,8 +131,14 @@ HttpSession::Response HttpSession::handle_post_shorten(const Request &request) {
     const auto parsed = parse_json_object(request.body());
 
     const std::string original_url = extract_url_from_json(parsed);
-    const std::optional<std::int64_t> user_id =
-        extract_user_id_from_json(parsed);
+    std::optional<std::int64_t> user_id = extract_user_id_from_json(parsed);
+    const std::optional<std::string> username =
+        extract_optional_username_from_json(parsed);
+
+    if (!user_id.has_value() && username.has_value()) {
+      const User user = url_service_.get_or_create_user(*username);
+      user_id = user.id;
+    }
 
     const Url shortened = url_service_.shorten_url(original_url, user_id);
 
@@ -331,6 +337,24 @@ std::string
 HttpSession::extract_username_from_json(const nlohmann::json &parsed) const {
   if (!parsed.contains("username")) {
     throw std::invalid_argument("field 'username' is required");
+  }
+
+  if (!parsed["username"].is_string()) {
+    throw std::invalid_argument("field 'username' must be a string");
+  }
+
+  const std::string username = parsed["username"].get<std::string>();
+  if (username.empty()) {
+    throw std::invalid_argument("field 'username' cannot be empty");
+  }
+
+  return username;
+}
+
+std::optional<std::string> HttpSession::extract_optional_username_from_json(
+    const nlohmann::json &parsed) const {
+  if (!parsed.contains("username") || parsed["username"].is_null()) {
+    return std::nullopt;
   }
 
   if (!parsed["username"].is_string()) {
