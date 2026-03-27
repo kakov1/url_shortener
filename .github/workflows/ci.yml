@@ -25,7 +25,8 @@ jobs:
             nlohmann-json3-dev \
             libpqxx-dev \
             libgtest-dev \
-            libxxhash-dev
+            libxxhash-dev \
+          && pip3 install pytest
 
       - name: Configure project with tests
         run: cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
@@ -65,6 +66,9 @@ jobs:
 
       - name: Run integration tests
         run: python -m unittest tests/integration/test_http_api.py -v
+
+      - name: Run load tests
+        run: pytest tests/load -s
 
       - name: Show logs on failure
         if: failure()
