@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libboost-all-dev \
     nlohmann-json3-dev \
     libpqxx-dev \
+    libgtest-dev \
     libxxhash-dev \
     libhiredis-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -33,7 +34,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN cmake -S . -B build
+RUN cmake -S . -B build -DBUILD_TESTING=ON
 RUN cmake --build build -j"$(nproc)"
 
 CMD ["./build/shortener", "--port", "8080", "--threads", "4", "--db-host", "postgres", "--db-port", "5432"]

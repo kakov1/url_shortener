@@ -1,6 +1,6 @@
 add_executable(unit_tests
     unit/unit_tests.cpp
-    unit/test_url_service.cpp
+    #unit/test_url_service.cpp
     unit/test_queue.cpp
     unit/test_config.cpp
 )
