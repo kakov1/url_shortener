@@ -2,6 +2,7 @@
 #include <iostream>
 #include <memory>
 
+#include "repositories/cache/redis/redis_cache.hpp"
 #include "config/config.hpp"
 #include "logic/url_service.hpp"
 #include "network/server/server.hpp"
@@ -18,7 +19,10 @@ int main(int argc, char *argv[]) {
     shortener::PostgresConnectionPool connection_pool(connection_string);
     shortener::PostgresUrlRepository url_repository(connection_pool);
     shortener::PostgresUserRepository user_repository(connection_pool);
-    shortener::UrlService url_service(url_repository, user_repository);
+    shortener::RedisUrlCache url_cache("redis", 6379, 0);
+
+    shortener::UrlService url_service(url_repository, user_repository,
+                                      url_cache, 3600);
 
     shortener::HttpServer server(config.port, config.num_threads, url_service);
     server.run();

@@ -9,8 +9,10 @@
 namespace shortener {
 
 UrlService::UrlService(IUrlRepository &url_repository,
-                       IUserRepository &user_repository)
-    : url_repository_(url_repository), user_repository_(user_repository) {}
+                       IUserRepository &user_repository, IUrlCache &url_cache,
+                       std::size_t cache_ttl_seconds)
+    : url_repository_(url_repository), user_repository_(user_repository),
+      url_cache_(url_cache), cache_ttl_seconds_(cache_ttl_seconds) {}
 
 User UrlService::create_user(const std::string &username) {
   if (username.empty()) {
@@ -58,6 +60,9 @@ Url UrlService::shorten_url(const std::string &original_url,
         original_url, *user_id);
 
     if (existing_url.has_value()) {
+      url_cache_.put_original_url(existing_url->short_key,
+                                  existing_url->original_url,
+                                  cache_ttl_seconds_);
       return *existing_url;
     }
   } else {
@@ -65,6 +70,9 @@ Url UrlService::shorten_url(const std::string &original_url,
         url_repository_.find_public_by_original_url(original_url);
 
     if (existing_public_url.has_value()) {
+      url_cache_.put_original_url(existing_public_url->short_key,
+                                  existing_public_url->original_url,
+                                  cache_ttl_seconds_);
       return *existing_public_url;
     }
   }
@@ -75,7 +83,12 @@ Url UrlService::shorten_url(const std::string &original_url,
     const std::string short_key = build_candidate_key(original_url, attempt);
 
     if (!url_repository_.exists_by_short_key(short_key)) {
-      return url_repository_.create(original_url, short_key, user_id);
+      Url created = url_repository_.create(original_url, short_key, user_id);
+
+      url_cache_.put_original_url(created.short_key, created.original_url,
+                                  cache_ttl_seconds_);
+
+      return created;
     }
   }
 
@@ -83,9 +96,15 @@ Url UrlService::shorten_url(const std::string &original_url,
 }
 
 std::optional<std::string>
-UrlService::resolve_url(const std::string &short_key) const {
+UrlService::resolve_url(const std::string &short_key) {
   if (short_key.empty()) {
     return std::nullopt;
+  }
+
+  auto cached_url = url_cache_.get_original_url(short_key);
+
+  if (cached_url.has_value()) {
+    return cached_url;
   }
 
   auto url = url_repository_.find_by_short_key(short_key);
@@ -93,6 +112,9 @@ UrlService::resolve_url(const std::string &short_key) const {
   if (!url.has_value()) {
     return std::nullopt;
   }
+
+  url_cache_.put_original_url(url->short_key, url->original_url,
+                              cache_ttl_seconds_);
 
   return url->original_url;
 }
@@ -109,8 +131,7 @@ std::vector<Url> UrlService::get_user_urls(std::int64_t user_id) const {
 
 std::string
 UrlService::generate_short_key(const std::string &original_url) const {
-  XXH64_hash_t hash_value =
-      XXH64(original_url.data(), original_url.size(), 0);
+  XXH64_hash_t hash_value = XXH64(original_url.data(), original_url.size(), 0);
 
   std::string encoded = encode_base62(static_cast<std::uint64_t>(hash_value));
 

@@ -10,6 +10,5 @@ target_include_directories(concurrency
 
 target_link_libraries(concurrency
     PUBLIC
-        logic
         Threads::Threads
 )

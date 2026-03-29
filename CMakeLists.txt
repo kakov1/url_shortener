@@ -35,6 +35,7 @@ target_link_libraries(shortener
         concurrency
         network
         postgres_repositories
+        cache
         Boost::system
         Boost::program_options
         Threads::Threads

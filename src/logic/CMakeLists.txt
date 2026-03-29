@@ -11,4 +11,5 @@ target_link_libraries(logic
     PUBLIC
         entities
         xxhash
+        cache
 )
