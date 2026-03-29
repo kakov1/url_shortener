@@ -29,11 +29,11 @@ jobs:
             libhiredis-dev
       - name: Install Redis
         run: |
-            git clone https://github.com/sewenew/redis-plus-plus.git \
-            cd redis-plus-plus \
-            mkdir build && cd build \
-            cmake .. \
-            make -j \
+            git clone https://github.com/sewenew/redis-plus-plus.git
+            cd redis-plus-plus
+            mkdir build && cd build
+            cmake ..
+            make -j
             sudo make install
 
 
